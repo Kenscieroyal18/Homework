@@ -2,11 +2,11 @@
 
 # Purpose
 
-Repository was created to upload SMU homework assignments. You can contact me at kennethr@mail.smu.edu  if you should have questions about the homework assignments. 
+Repository was created to upload SMU homework assignments. You can contact me at kennethr@mail.smu.edu  if you should have questions. 
 
 # Topics
 
-Material of topics will be related to units in MSDS6306
+Material of topics will be related to units in MSDS6306.
 
 # Material
 
