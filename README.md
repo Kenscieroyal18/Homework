@@ -13,7 +13,7 @@ Material of topics will be related to units in MSDS6306
 Material Sources:
 
 -	Text File
--	Knitted HTML file
+-	HTML file
 -	RMD file
 -	Raw file
 
