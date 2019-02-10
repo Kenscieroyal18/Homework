@@ -24,8 +24,8 @@ Unit 5:
 - yob2016.txt
 - yob2015.txt
 -	Baby_Girl_Names.csv
-- Definitions of Objects
-   df - variable assigned that consists of three columns read from text file
+- Definitions of Object
+     - df - variable assigned that consists of three columns read from text file
    
   
 
