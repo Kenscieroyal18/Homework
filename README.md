@@ -23,15 +23,16 @@ Unit 5:
 
 - yob2016.txt
 - yob2015.txt
--	Baby_Girl_Names.csv
+- Baby_Girl_Names.csv
 - Definitions of Object
      - df - variable assigned that consists of three columns read from text file
      - y2016 - dataset was renamed after removing redundent observation from dataset named df
      - y2015 - variable assigned and read from yob2015 text file
      - final - variable contains yob2016 and yob2015 datasets merged
      - sort.final - variable created with data sorted by Total descending
-     - 
-     
+     - filter.final - variable created to select all females, excluding males 
+     - most.pop.10 - variable contains the top 10 most popular girl's names
+     - csv.final - variable created to export a csv file containing only the top 10 girls names and total columns 
    
   
 
