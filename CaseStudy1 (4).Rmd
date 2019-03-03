@@ -1,0 +1,240 @@
+---
+title: "Founders Brewing Co."
+author: "Y.Leung, K.Richardson"
+date: "February 23, 2019"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## R Libraries
+```{r libraries, echo=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(GGally)
+library(maps)
+library(openintro)
+library(mosaic)
+library(kableExtra)
+library(stringr)
+library(stringi)
+```
+
+##Introduction
+Founders is the fastest growing brewery in the U.S. with 5.2 percent of 2017 sales growth coming from new markets.  "Much of      Founders' success in 2017 can be attributed to All Day IPA, a 4.7 percent ABV session beer that now accounts for about 60        percent of the company's total output. Sales of that beer were up 37 percent in 2017, and Stevens believes there's still plenty   of runway left". https://www.brewbound.com/news/34-percent-founders-brewing-eyes-625000-barrels-2018.
+
+Mike Stevens and Dave Engbers, owners of Founders Brewery presented Leung and Richardson Data Analytics Group with two data      sets; beer.csv and breweries.csv.  Our client would like us to conduct an analysis of the data and provide some insights.  
+
+
+
+
+## Import Files
+```{r Read-CSVs}
+breweries  <- read.csv("~/SMU/DDS/Unit 7/Breweries.csv")
+beers <-read.csv("~/SMU/DDS/Unit 7/Beers.csv")
+```
+
+## Breweries Per State
+```{r Brew-per-State}
+#List the brewery counts per state and convert into data frame
+BreweryPerState<-table(breweries$State)
+BreweryPerState<-data.frame(BreweryPerState)
+#Rename the Header of BreweryPerState
+colnames(BreweryPerState)[1]<-"State"
+colnames(BreweryPerState)[2]<-"Brewery_Count"
+#Arrange the State by brewery counts
+BreweryPerState<-arrange(BreweryPerState, desc(Brewery_Count))
+#Print the data frame as a table
+print(tbl_df(BreweryPerState),n=51)
+
+#Plot Brewery Count Per State
+ggplot(BreweryPerState, aes(y=Brewery_Count, x=reorder(State,-Brewery_Count),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Brewery_Count")+ggtitle("Brewery Count(s) By State")
+```
+A simple bar plot with the brewery count arranged in a descending order.
+
+## Breweries Per State Map
+```{r Map}
+# map_data function to setup map
+all_states <- map_data("state")
+# changing statename to abbreviated name
+all_states["State"] <- state2abbr(all_states$region)
+# to get rid of spaces
+BreweryPerState["State"] <- str_trim(BreweryPerState$State,"left")
+BreweryPerState
+# merging brewery data with map_data to generate U.s. map
+Map.heat <- merge(all_states,BreweryPerState, by.x = c("State"), by.y = c("State"))
+# creating varaible for ggplot
+gp <- ggplot()
+# customizing the u.s. map
+gp <- gp + geom_polygon(data=Map.heat, aes(x=long, y=lat, group = State, fill=Map.heat$Brewery_Count),colour="white"
+) + scale_fill_continuous(low = "thistle2", high = "darkred", guide="colorbar")
+gp1 <- gp  + theme_bw()  + labs(fill = "Brewery Count",title = "U.S. Breweries by State", x="", y="",caption = "Figure 1: U.S. Map of Breweries")
+gp2 <- gp1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border = element_blank())
+# output generated
+gp2
+```
+As seen from the brewery map above, Colorado (47), California (39) and Michigan (32) are the top 3 states with the most breweries. 
+
+
+## Merge Breweries and Beers by brewery id
+```{r Merge-beers-breweries}
+#Merge the beers and breweries data frames by the brewery id
+Brewery_Beer<-merge(beers, breweries,by.x = "Brewery_id", by.y = "Brew_ID")
+
+#Rename the Header of the Beer Name and Brewery Name after merging
+colnames(Brewery_Beer)[2]<-"Beer_Name"
+colnames(Brewery_Beer)[8]<-"Brewery_Name"
+
+#Print the first 6 rows of the Brewery_Beer data frame
+Top6<-head(Brewery_Beer,6)
+print(tbl_df(Top6),n=NULL,width = Inf)
+
+#Print the last 6 rows of the Brewery_Beer data frame
+Bot6<-tail(Brewery_Beer,6)
+print(tbl_df(Bot6),n=NULL,width = Inf)
+```
+After merging the 2 data sets, print the Top and Bottom 6 rows of data in the merged file to confirm and ensure the merged file correctness.
+
+
+## Numbers of NA in each column
+```{r NA-Per-Column}
+#Count the number of times N/A appears in each column
+NaPerCol<-Brewery_Beer %>%
+  select(everything()) %>%  
+  summarise_all(funs(sum(is.na(.))))
+#Print the NaPerCol data frame as a table
+print(tbl_df(NaPerCol),n=NULL,width = Inf)
+
+#Get total row counts, this is the same for all columns 
+totalRowCount<-nrow(Brewery_Beer)
+
+#Percentage of time N/A appears in each column
+PercentageNAperCol<-NaPerCol/totalRowCount*100
+#Print the percent of NA per column as a table
+print(tbl_df(PercentageNAperCol),n=NULL,width = Inf)
+
+#Summary Table of total NA counts and total Row counts per column
+NaCountTable<-rbind(NaPerCol,totalRowCount)
+#Make the name frame for NaCountTable
+Variables<-c("N/A Counts","Total Counts")
+#Combine Variables and NaCountTable
+NaCountTable<-cbind(Variables,NaCountTable)
+#Print the NaCountTable data frame as a table
+print(tbl_df(NaCountTable),n=NULL,width = Inf)
+```
+The merged data set has 2410 rows of data, and by counting the numbers of missing values in each column, we would see that almost half the IBU values were missing (~42%). There was ~3% of ABV data missing but was not too detrimental in the analysis.
+
+
+## Median Alcohol Content and IBU per state
+```{r Median-ABV-IBU}
+#Calculate ABV and IBU medians
+medianABV<-Brewery_Beer %>%  group_by(State) %>%  summarize(median_ABV = median(ABV, na.rm = TRUE))
+medianIBU<-Brewery_Beer %>%  group_by(State) %>%  summarize(median_IBU = median(IBU, na.rm = TRUE))
+
+#Remove all NA values from medianABV and medianIBU data frames
+medianABV<-na.omit(medianABV)
+medianIBU<-na.omit(medianIBU)
+
+#Plot median ABV 
+#Reorder from highest to lowest
+ggplot(medianABV, aes(y=median_ABV, x=reorder(State,-median_ABV),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Median ABV")+ggtitle("Median ABV by State")
+
+#Plot median IBU
+#Reorder from highest to lowest
+ggplot(medianIBU, aes(y=median_IBU, x=reorder(State,-median_IBU),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Median IBU")+ggtitle("Median IBU by State")
+
+#Plot Top and Bottom 5 median ABV 
+#Sort the medianABV by median_ABV
+SortedMedABV<-arrange(medianABV, desc(median_ABV))
+#Find the top 5 from the sortedMedABV df
+Top5ABV<-head(SortedMedABV,5)
+#Find the bottom 5 from the sortedMedABV df
+Bot5ABV<-tail(SortedMedABV,5)
+
+#Top 5 Median ABV plot
+A<-ggplot(Top5ABV, aes(y=median_ABV, x=reorder(State,-median_ABV),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Median ABV")+ggtitle("5 Highest Median ABV by State")+ ylim(0,0.07)
+#Bottom 5 Median ABV plot
+B<-ggplot(Bot5ABV, aes(y=median_ABV, x=reorder(State,-median_ABV),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Median ABV")+ggtitle("5 Lowest Median ABV by State")+ ylim(0,0.07)
+#(Side by side bar plots) for the Top and Bottom Median ABV
+grid.arrange(A, B, nrow = 1)
+
+#Plot Top and Bottom 5 median IBU
+#Sort the medianIBU by median_IBU
+SortedMedIBU<-arrange(medianIBU, desc(median_IBU))
+#Find the top 5 from the sortedMedIBU df
+Top5IBU<-head(SortedMedIBU,5)
+#Find the bottom 5 from the sortedMedIBU df, SD was removed 
+Bot5IBU<-tail(SortedMedIBU,5)
+
+# Top 5 Median IBU plot
+C<-ggplot(Top5IBU, aes(y=median_IBU, x=reorder(State,-median_IBU),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Median IBU")+ggtitle("5 Highest Median IBU by State")+ ylim(0,65)
+#Bottom 5 Median IBU plot
+D<-ggplot(Bot5IBU, aes(y=median_IBU, x=reorder(State,-median_IBU),fill=State)) + geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("State")+ylab("Median IBU")+ggtitle("5 Lowest Median IBU by State")+ ylim(0,65)
+#(Side by side bar plots) for the Top and Bottom Median IBU
+grid.arrange(C,D, nrow = 1)
+
+```
+After calculating the median values of ABV and IBU, we invoked the na.omit function for each median calculation to ensure that all missing values were completely removed.
+
+The median ABV and median IBU plots were computed and charted by state. We noticed that in the median IBU graph, the top 5 beers with the highest median IBUs came from east coast states (ME,WV,FL,GA and DE). 
+
+
+## State with highest ABV and highest IBU
+```{r Max-IBU-ABV}
+#Find the Highest ABV and returns the State and the ABV value
+Brewery_Beer %>%  slice(which.max(ABV))%>%select(State,ABV)
+#Find the Highest IBU and returns the State and the IBU value
+Brewery_Beer %>%  slice(which.max(IBU))%>%select(State,IBU)
+```
+The state with the higest ABV beer was Colorado and the beer with the highest IBU came from Oregon.
+
+
+## Summary Statistics of ABV
+```{r ABV-Stat-Summary}
+#Summary Statistics of ABV
+Brewery_Beer %>%select(ABV)%>%summary()
+
+```
+The summary statistics of ABV showed that the mean and median were roughly equal (~0.06) with the max ABV at 0.128 and the min ABV at 0.001. The 1st and 3rd quartile of the ABV are 0.050 and 0.067. 
+
+
+## IBU versus ABV relationship
+```{r IBU-vs-ABV}
+#Correlation Matrix of IBU vs ABV
+AbvIBU<-Brewery_Beer[,c(4,5)]
+p<-ggcorr(AbvIBU,palette = "RdBu", label = TRUE)
+p+ggtitle('Correlation Matrix Between ABV and IBU')
+
+#Scatter plot of IBU on x and ABV on y with regression line
+ggplot(Brewery_Beer, aes(x=IBU, y=ABV))+geom_point()+geom_smooth(method="lm")+ggtitle("Scatter Plot, ABV versus IBU")
+
+#linear regression model between ABV and IBU
+lm.ABV<-lm(ABV ~ IBU,Brewery_Beer)
+
+#Summary Statistics of the linear regression model between ABV and IBU
+summary(lm.ABV)
+
+#Residual Plot of the linear model
+ qplot(fitted(lm.ABV), resid(lm.ABV))+geom_hline(yintercept=0)+ggtitle("Residual Plot for the linear model")
+
+```
+
+Plotting the ABV vs IBU, we would see that the data was clustered around 10-40 IBU (corresponding to 0.04 to 0.06 ABV).
+To determine the linear relationship, a regression analysis was performed with the following hypothesis.
+Null: Slope is equal to zero. 
+Alternative: Slope is not equal to zero.
+Result: Reject Null given that the p-value is < 2.2e-16 (α=0.05) with the Adjusted R-squared 0.4493 (~45% of the variance of ABV can be explained by IBU)
+
+
+##Conclusion
+In summary, after exploring the questions of interest, we found that there was not a strong linear relationship between alcohol contect (ABV) and Bitterness (IBU). The missing IBU values were concerning as missing half the data entries would significantly affect any calculations (i.e. median, summary statistics and simple linear regression). 
+
+From the scatter plot as well as the residual plot, we saw that most of the data points were clustered around 10-40 IBU (corresponding to 0.04 to 0.06 ABV). Since the residual plot was not randomly scattered around 0, therefore the variance of the error terms may not be constant and could affect the validity of the proposed linear model.
